@@ -1,0 +1,144 @@
+Android JetPack : Support Library
+
+ViewBinding and DataBinding are enabled module-wise : 
+
+DataBinding : 
+Binds UI Components in layouts to data in a “Declarative format” instead “Programatically”
+@{} —> usage
+
+Advantages : 
+Avoid framework calls
+Avoid Memory leaks and Null pointer exceptions
+Improves app performance
+
+View Binding and DataBinding
+
+ViewBinding is different from Data Binding
+
+ViewBinding : 
+In most cases view binding replaces “findViewById”
+Binding class is generated : Contains references to all the views containing id
+
+SetUp : 
+viewBinding {
+	enabled = true
+}
+
+UPDATE Android Studio 4.0
+android {
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+If you want to layout file to be ignored while generating binding classes : 
+tools: viewBindingIgnore = true on parent layout in layout file
+
+Binding class : getRoot() method —> returns parent layout
+Binding class : has a static method —> inflate : returns Binding class instance
+
+You just have to return binding.getRoot() or set Binding.getRoot
+
+For Fragments : return binding.getRoot()
+For Activities : SetContentView(binding.getRoot())
+
+Usage in Activity : getRoot() and set in setContentView();
+Usage in Fragment : return getRoot();
+
+Special Case for fragments : make binding == null in OnDestroyView as fragment outlives their views
+
+Advantages : 
+Null Safety —> No Null Pointer Exception
+Type Safety —> No Class Cast Exception
+But Kotlin basically removes the need of ViewBinding as it has built support for it, You can directly reference view from it
+
+View Binding vs Data Binding
+Compile time faster : No Annotation processing so compile time faster
+Ease Of Use : When enabled it is applied to all the layouts by default which is not in the case of Data binding
+
+DisAdvantages : 
+No layout variables or expressions (No dynamic UI content in layout)
+No support for Two way data binding
+
+Easy Mistakes : 
+Using ViewBinding in activity : 
+Binding = BindingClass.inflate(R.layout.xyz)
+setContentView(R.layout.xyz) —> Easy Mistake, layout is inflated twice in this case. So instead of passing binding object you may pass layout id. Keep a check on this
+
+Generated Code in ViewBinding:
+Binding class is generated with the references to the views 
+We get the binding object in the activity or fragment through inflate static method
+The binding object has references to all the views with id in the layout
+It also has root view which is the parent view (which getRoot() returns)
+
+Three imp methods : 
+Inflate (inflater) —> For Activities (normal inflation of activities)
+Inflate (inflater, parent, attachToParent) —> For fragments (normal inflation of fragments)
+bind(rootview) —> initialises all the referenced views in the binding object and return the binding object (The real magic happens here)
+
+E.g : 
+private ActivityAwesomeBinding(@NonNull ConstraintLayout rootView, @NonNull Button button,
+      @NonNull TextView subtext, @NonNull TextView title) { … }
+  
+  @NonNull
+  public static ActivityAwesomeBinding inflate(@NonNull LayoutInflater inflater) {
+    /* Edited: removed call to overload inflate(inflater, parent, attachToParent) */
+    View root = inflater.inflate(R.layout.activity_awesome, null, false);
+    return bind(root);
+  }
+}
+
+@NonNull
+public static ActivityAwesomeBinding bind(@NonNull View rootView) {
+/* Edit: Simplified code – the real generated code is an optimized version */
+Button button = rootView.findViewById(R.id.button);
+TextView subtext = rootView.findViewById(R.id.subtext);
+TextView title = rootView.findViewById(R.id.title);
+if (button != null && subtext != null && title != null) {
+  return new ActivityAwesomeBinding((ConstraintLayout) rootView, button, subtext, title);
+}
+throw new NullPointerException("Missing required view […]");
+}
+
+Included Layouts : <include></include> tag
+In this case the Binding object has a reference to the Included Binding object
+public final class ActivityAwesomeBinding implements ViewBinding {
+
+  @NonNull <Included layout binding object>
+  public final IncludedButtonsBinding includes;
+}
+
+Included layout must have a ID for generating binding class, otherwise it is ignored
+
+Very Important : 
+ViewBinding vs Butterknife vs Kotlin Android Extensions vs findViewById
+
+Inshort : If kotlin is used —> use Kotlin Android Extensions
+Or else —> ViewBinding
+
+Read this : 
+kotlin-android-extensions is better for Kotlin. ButterKnife is also good but kotlin-android-extensions is a better and smart choice here.
+Reason : Kotlin uses synthetic properties and those are called on demand using caching function(Hence slight fast Activity/Fragment loading) while ButterKnife binds all view at a time on ButterKnife.bind()(that consumes slight more time). With Kotlin you don't even need to use annotation for binding the views.
+Yes it also plays good with RecyclerView + ViewHolder pattern, you just need to import kotlinx.android.synthetic.main.layout_main.view.*(if layout_main.xml is Activity/Fragment layout file name).
+You do not need to do any extra effort for layout imported using include. Just use id of imported views.
+Have a look at following official documentation notes:
+Kotlin Android Extensions is a plugin for the Kotlin compiler, and it does two things:
+Adds a hidden caching function and a field inside each Kotlin Activity. The method is pretty small so it doesn't increase the size of APK much.
+Replaces each synthetic property call with a function call.
+How this works is that when invoking a synthetic property, where the receiver is a Kotlin Activity/Fragment class that is in module sources, the caching function is invoked. For instance, given
+
+class MyActivity : Activity()
+fun MyActivity.a() { 
+    this.textView.setText(“”)
+}
+a hidden caching function is generated inside MyActivity, so we can use the caching mechanism.
+However in the following case:
+
+fun Activity.b() { 
+    this.textView.setText(“”)
+}
+We wouldn't know if this function would be invoked on only Activities from our sources or on plain Java Activities also. As such, we don’t use caching there, even if MyActivity instance from the previous example is the receiver.
+
+
+
+
